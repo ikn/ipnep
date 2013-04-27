@@ -11,6 +11,8 @@ class Conf (object):
     )
     KEYS_FIRE = ((pg.K_RSHIFT,), (pg.K_SPACE,))
     PAINTER_SPEED = 5
+    BASE_PAINTER_SPEED = 2
+    MAX_PAINTER_SPEED = 10
     PLAYER_COLOURS = ((200, 0, 0), (0, 0, 200))
     LAYERS = {
         'bg': 1,

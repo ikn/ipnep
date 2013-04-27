@@ -35,7 +35,8 @@ class Painter (gm.Graphic):
         self._tpos_last = self.tpos = pos
         self.axis = axis
         self.dirn = dirn
-        self.speed = conf.PAINTER_SPEED * speed
+        self.speed = min(conf.BASE_PAINTER_SPEED + conf.PAINTER_SPEED * speed,
+                         conf.MAX_PAINTER_SPEED)
         world.canvas.paint(colour, *pos)
         radius = world.tile_size / 2
         sfc = pg.Surface((2 * radius, 2 * radius)).convert_alpha()
@@ -115,7 +116,7 @@ class Player (gm.Colour):
 
 class Level (World):
     def init (self):
-        sx, sy = 20, 10
+        sx, sy = 25, 13
         self.rect = pg.Rect(0, 0, sx, sy)
         w, h = conf.RES
         self.tile_size = ts = min(w / sx, h / sy)
