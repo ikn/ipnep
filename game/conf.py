@@ -13,7 +13,7 @@ class Conf (object):
     PAINTER_SPEED = 5
     BASE_PAINTER_SPEED = 2
     MAX_PAINTER_SPEED = 10
-    PLAYER_COLOURS = ((200, 0, 0), (0, 0, 200))
+    PLAYER_COLOURS = ((220, 50, 50), (70, 70, 200))
     LAYERS = {
         'bg': 1,
         'canvas': 0,
