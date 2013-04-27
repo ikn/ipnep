@@ -17,15 +17,22 @@ class Canvas (gm.Graphic):
         gm.Graphic.__init__(self, pg.Surface(r[2:]), r[:2],
                             conf.LAYERS['canvas'])
 
+    def get_colour (self, x, y):
+        if not self.trect.collidepoint(x, y):
+            return None
+        else:
+            return self.colours[x - 1][y - 1]
+
     def paint (self, colour, x, y):
         if not self.trect.collidepoint(x, y):
-            return
+            return False
         self.colours[x - 1][y - 1] = colour
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
         r = pg.Rect((x - 1) * s, (y - 1) * s, s, s)
         sfc.fill(colour, r)
         self._dirty.append(r)
+        return True
 
 
 class Painter (gm.Graphic):
@@ -35,24 +42,35 @@ class Painter (gm.Graphic):
         self._tpos_last = self.tpos = pos
         self.axis = axis
         self.dirn = dirn
+        self.remain = 3
         self.speed = min(conf.BASE_PAINTER_SPEED + conf.PAINTER_SPEED * speed,
                          conf.MAX_PAINTER_SPEED)
-        world.canvas.paint(colour, *pos)
+        self.paint(*pos)
         radius = world.tile_size / 2
         sfc = pg.Surface((2 * radius, 2 * radius)).convert_alpha()
         sfc.fill((0, 0, 0, 0))
         pg.draw.circle(sfc, (100, 100, 100), (radius, radius), radius)
         gm.Graphic.__init__(self, sfc, self.get_pos(0), conf.LAYERS['painter'])
-        world.graphics.add(self)
+        world.add_painter(self)
         world.scheduler.interp(self.get_pos, (self, 'pos'),
-                               end = lambda: world.graphics.rm(self))
+                               end = lambda: world.rm_painter(self))
+
+    def paint (self, x, y):
+        canvas = self.world.canvas
+        c = canvas.get_colour(x, y)
+        if self.remain:
+            if c != self.colour and self.world.canvas.paint(self.colour, x, y):
+                self.remain -= 1
+        elif c is not None:
+            self.colour = c
+            self.remain = 1
 
     def get_pos (self, t):
         i = self.axis
         p = list(self.tpos)
         p[i] += self.speed * t * self.dirn
         if self._tpos_last[i] % 1 < .5 and p[i] % 1 >= .5:
-            self.world.canvas.paint(self.colour, ir(p[0]), ir(p[1]))
+            self.paint(ir(p[0]), ir(p[1]))
         self._tpos_last = p
         if p[i] <= -1 or p[i] >= self.world.rect.size[i]:
             return None
@@ -75,13 +93,17 @@ class Player (gm.Colour):
                 w, h = self.world.rect.size
                 if x == 0:
                     dirn = 2
+                    x += 1
                 elif x == w - 1:
                     dirn = 0
+                    x -= 1
                 elif y == 0:
                     dirn = 3
+                    y += 1
                 else:
                     assert y == h - 1
                     dirn = 1
+                    y -= 1
                 Painter(self.world, self.colour, (x, y), dirn % 2,
                         1 if dirn >= 2 else -1, self.fire_time)
                 self.world.scheduler.rm_timeout(self._fire_timeout)
@@ -136,10 +158,15 @@ class Level (World):
                  ir(.1 * fps))
                 for j, ks in enumerate(keys_m)
             ])
+        self.painters = []
 
         # graphics
         bg = gm.Colour((255, 255, 255), ((0, 0), conf.RES), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
+
+    def update (self):
+        # painter collisions
+        pass
 
     def tile_pos (self, x, y):
         x0, y0 = self.grid_offset
@@ -154,3 +181,11 @@ class Level (World):
         x0, y0 = self.grid_offset
         s = self.tile_size
         return (x0 + x * s, y0 + y * s, w * s, h * s)
+
+    def add_painter (self, p):
+        self.painters.append(p)
+        self.graphics.add(p)
+
+    def rm_painter (self, p):
+        self.graphics.rm(p)
+        self.painters.remove(p)
