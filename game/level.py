@@ -98,6 +98,7 @@ class Player (gm.Graphic):
         gm.Graphic.__init__(self, 'player{0}.png'.format(ident + 1),
                             world.tile_pos(x, y), conf.LAYERS['player'])
         self.resize(world.tile_size, world.tile_size)
+        self.resize(world.tile_size, world.tile_size) # whaaaaaaaaaaaaaa
 
     def fire (self, key, key_up, mods):
         if key_up:
