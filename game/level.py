@@ -35,7 +35,7 @@ class Painter (gm.Graphic):
         self._tpos_last = self.tpos = pos
         self.axis = axis
         self.dirn = dirn
-        self.speed = speed
+        self.speed = conf.PAINTER_SPEED * speed
         world.canvas.paint(colour, *pos)
         radius = world.tile_size / 2
         sfc = pg.Surface((2 * radius, 2 * radius)).convert_alpha()
@@ -60,13 +60,45 @@ class Painter (gm.Graphic):
 
 
 class Player (gm.Colour):
-    def __init__ (self, world, x, y):
+    def __init__ (self, world, colour, x, y):
         self.world = world
         self.trect = pg.Rect(x, y, 1, 1)
-        gm.Colour.__init__(self, (255, 0, 0), world.tile_rect(*self.trect),
+        self.firing = False
+        gm.Colour.__init__(self, colour, world.tile_rect(*self.trect),
                            conf.LAYERS['player'])
 
+    def fire (self, key, key_up, mods):
+        if key_up:
+            if self.firing:
+                x, y = self.trect.topleft
+                w, h = self.world.rect.size
+                if x == 0:
+                    dirn = 2
+                elif x == w - 1:
+                    dirn = 0
+                elif y == 0:
+                    dirn = 3
+                else:
+                    assert y == h - 1
+                    dirn = 1
+                Painter(self.world, self.colour, (x, y), dirn % 2,
+                        1 if dirn >= 2 else -1, self.fire_time)
+                self.world.scheduler.rm_timeout(self._fire_timeout)
+                self.firing = False
+        else:
+            self.firing = True
+            self.fire_time = 0
+            self._fire_timeout = self.world.scheduler.add_timeout(
+                self.charge_fire, frames = 1
+            )
+
+    def charge_fire (self):
+        self.fire_time += 1. / self.world.scheduler.fps
+        return True
+
     def move (self, key, mode, mods, dirn):
+        if self.firing:
+            return
         pos = self.trect.topleft
         size = self.world.rect.size
         dp = [0, 0]
@@ -92,19 +124,21 @@ class Level (World):
         self.canvas = Canvas(self)
         self.players = ps = []
         fps = self.scheduler.fps
-        for i, keys in enumerate(conf.KEYS_MOVE):
-            p = Player(self, 0, 2 + 2 * i)
+        for i, (keys_m, keys_f) in enumerate(zip(conf.KEYS_MOVE,
+                                                 conf.KEYS_FIRE)):
+            p = Player(self, conf.PLAYER_COLOURS[i], 0, 2 + 2 * i)
             ps.append(p)
             self.evthandler.add_key_handlers([
+                (keys_f, p.fire, eh.MODE_ONPRESS)
+            ] + [
                 (ks, [(p.move, (j,))], eh.MODE_ONDOWN_REPEAT, ir(.3 * fps),
                  ir(.1 * fps))
-                for j, ks in enumerate(keys)
+                for j, ks in enumerate(keys_m)
             ])
 
         # graphics
         bg = gm.Colour((255, 255, 255), ((0, 0), conf.RES), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
-        Painter(self, (255, 0, 0), (1, 1), 0, 1, 5)
 
     def tile_pos (self, x, y):
         x0, y0 = self.grid_offset
