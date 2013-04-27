@@ -157,7 +157,7 @@ class Level (World):
         fps = self.scheduler.fps
         for i, (keys_m, keys_f) in enumerate(zip(conf.KEYS_MOVE,
                                                  conf.KEYS_FIRE)):
-            p = Player(self, i, 0, 2 + 2 * i)
+            p = Player(self, i, i * (sx - 1), sy / 2)
             ps.append(p)
             self.evthandler.add_key_handlers([
                 (keys_f, p.fire, eh.MODE_ONPRESS)

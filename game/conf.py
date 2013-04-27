@@ -6,11 +6,11 @@ from engine import conf
 class Conf (object):
     # input
     KEYS_MOVE = (
-        ((pg.K_LEFT,), (pg.K_UP,), (pg.K_RIGHT,), (pg.K_DOWN,)),
         ((pg.K_a, pg.K_q), (pg.K_w, pg.K_z, pg.K_COMMA), (pg.K_d, pg.K_e),
-         (pg.K_s, pg.K_o))
+         (pg.K_s, pg.K_o)),
+        ((pg.K_LEFT,), (pg.K_UP,), (pg.K_RIGHT,), (pg.K_DOWN,))
     )
-    KEYS_FIRE = ((pg.K_RSHIFT,), (pg.K_SPACE,))
+    KEYS_FIRE = ((pg.K_SPACE,), (pg.K_RSHIFT,))
 
     # gameplay
     PAINTER_SPEED = 5
