@@ -6,6 +6,7 @@ if os.name == 'nt':
     import pygame._view
 from game import engine
 
+from game import conf
 from game.level import Level as entry_world
 
 if __name__ == '__main__':

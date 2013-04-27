@@ -170,7 +170,7 @@ May be set directly, but not altered in-place.
     @rect.setter
     def rect (self, rect):
         # need to set dirty in old and new rects (if changed)
-        last = self.last_rect
+        last = self._rect
         rect = Rect(rect)
         if rect != last:
             sz = rect.size
@@ -337,8 +337,6 @@ Setting this rotates about the graphic's centre.
     @angle.setter
     def angle (self, angle):
         self.rotate(angle)
-
-    @angle.setter
 
     # other properties
 
