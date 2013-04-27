@@ -145,7 +145,7 @@ class Player (gm.Colour):
 
 class Level (World):
     def init (self):
-        sx, sy = 25, 13
+        sx, sy = conf.LEVEL_SIZE
         self.rect = pg.Rect(0, 0, sx, sy)
         w, h = conf.RES
         self.tile_size = ts = min(w / sx, h / sy)
@@ -168,7 +168,7 @@ class Level (World):
         self.painters = []
 
         # graphics
-        bg = gm.Colour((0, 0, 0), ((0, 0), conf.RES), conf.LAYERS['bg'])
+        bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
 
     def update (self):
