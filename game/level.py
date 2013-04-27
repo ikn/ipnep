@@ -31,9 +31,8 @@ class Canvas (gm.Graphic):
         self.colours[x - 1][y - 1] = colour
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
-        r = pg.Rect((x - 1) * s, (y - 1) * s, s, s)
-        sfc.fill(colour, r)
-        self._dirty.append(r)
+        sfc.fill(colour, ((x - 1) * s, (y - 1) * s, s, s))
+        self._dirty.append(pg.Rect(self.world.tile_rect(x, y, 1, 1)))
         return True
 
 
@@ -94,6 +93,7 @@ class Player (gm.Colour):
         self.world = world
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
+        self.cooldown_time = 0
         gm.Colour.__init__(self, colour, world.tile_rect(*self.trect),
                            conf.LAYERS['player'])
 
@@ -113,18 +113,17 @@ class Player (gm.Colour):
                     dirn = 1
                 Painter(self.world, self.colour, (x, y), dirn % 2,
                         1 if dirn >= 2 else -1, self.fire_time)
-                self.world.scheduler.rm_timeout(self._fire_timeout)
                 self.firing = False
-        else:
+        elif self.cooldown_time <= 0:
             self.firing = True
             self.fire_time = 0
-            self._fire_timeout = self.world.scheduler.add_timeout(
-                self.charge_fire, frames = 1
-            )
+            self.cooldown_time = conf.COOLDOWN_TIME
 
-    def charge_fire (self):
-        self.fire_time += 1. / self.world.scheduler.fps
-        return True
+    def update (self):
+        frame = 1. / self.world.scheduler.fps
+        if self.firing:
+            self.fire_time += frame
+        self.cooldown_time -= frame
 
     def move (self, key, mode, mods, dirn):
         if self.firing:
@@ -172,6 +171,8 @@ class Level (World):
         self.graphics.add(bg, self.canvas, *ps)
 
     def update (self):
+        for p in self.players:
+            p.update()
         # painter collisions
         ps = self.painters
         rm = []
@@ -181,7 +182,9 @@ class Level (World):
             for p2 in ps[i + 1:]:
                 if p2 in rm:
                     continue
-                if pg.Rect(p1.tpos, (1, 1)).clip(p2.tpos, (1, 1)):
+                x1, y1 = p1.tpos
+                x2, y2 = p2.tpos
+                if abs(x2 - x1) < 1 and abs(y2 - y1) < 1:
                     rm.extend((p1, p2))
         for p in rm:
             p.explode()
