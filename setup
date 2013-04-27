@@ -1,0 +1,12 @@
+#! /bin/sh
+
+p=`command -v python2`
+if [ $? -ne 0 ]; then
+    p=`command -v python`
+    if [ $? -ne 0 ]; then
+        echo "error: cannot find Python 2 binary" 1>&2
+        exit 1
+    fi
+fi
+
+"$p" setup.py build
