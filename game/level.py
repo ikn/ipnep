@@ -39,7 +39,8 @@ class Painter (gm.Graphic):
     def __init__ (self, world, colour, pos, axis, dirn, speed):
         self.world = world
         self.colour = colour
-        self._tpos_last = self.tpos = pos
+        self._tpos_last = self.tpos = list(pos)
+        self._t_last = 0
         self.axis = axis
         self.dirn = dirn
         self.remain = 3
@@ -52,8 +53,9 @@ class Painter (gm.Graphic):
         pg.draw.circle(sfc, (100, 100, 100), (radius, radius), radius)
         gm.Graphic.__init__(self, sfc, self.get_pos(0), conf.LAYERS['painter'])
         world.add_painter(self)
-        world.scheduler.interp(self.get_pos, (self, 'pos'),
-                               end = lambda: world.rm_painter(self))
+        self._pos_interp = world.scheduler.interp(
+            self.get_pos, (self, 'pos'), end = lambda: world.rm_painter(self)
+        )
 
     def paint (self, x, y):
         canvas = self.world.canvas
@@ -67,15 +69,20 @@ class Painter (gm.Graphic):
 
     def get_pos (self, t):
         i = self.axis
-        p = list(self.tpos)
-        p[i] += self.speed * t * self.dirn
+        p = self.tpos
+        p[i] += self.speed * (t - self._t_last) * self.dirn
         if self._tpos_last[i] % 1 < .5 and p[i] % 1 >= .5:
             self.paint(ir(p[0]), ir(p[1]))
-        self._tpos_last = p
+        self._tpos_last = list(p)
+        self._t_last = t
         if p[i] <= -1 or p[i] >= self.world.rect.size[i]:
             return None
         else:
             return self.world.tile_pos(*p)
+
+    def explode (self):
+        self.world.scheduler.rm_timeout(self._pos_interp)
+        self.world.rm_painter(self)
 
 
 class Player (gm.Colour):
@@ -93,17 +100,13 @@ class Player (gm.Colour):
                 w, h = self.world.rect.size
                 if x == 0:
                     dirn = 2
-                    x += 1
                 elif x == w - 1:
                     dirn = 0
-                    x -= 1
                 elif y == 0:
                     dirn = 3
-                    y += 1
                 else:
                     assert y == h - 1
                     dirn = 1
-                    y -= 1
                 Painter(self.world, self.colour, (x, y), dirn % 2,
                         1 if dirn >= 2 else -1, self.fire_time)
                 self.world.scheduler.rm_timeout(self._fire_timeout)
@@ -166,7 +169,18 @@ class Level (World):
 
     def update (self):
         # painter collisions
-        pass
+        ps = self.painters
+        rm = []
+        for i, p1 in enumerate(ps):
+            if p1 in rm:
+                continue
+            for p2 in ps[i + 1:]:
+                if p2 in rm:
+                    continue
+                if pg.Rect(p1.tpos, (1, 1)).clip(p2.tpos, (1, 1)):
+                    rm.extend((p1, p2))
+        for p in rm:
+            p.explode()
 
     def tile_pos (self, x, y):
         x0, y0 = self.grid_offset
