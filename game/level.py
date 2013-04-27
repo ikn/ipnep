@@ -88,14 +88,16 @@ class Painter (gm.Graphic):
         self.world.rm_painter(self)
 
 
-class Player (gm.Colour):
-    def __init__ (self, world, colour, x, y):
+class Player (gm.Graphic):
+    def __init__ (self, world, ident, x, y):
         self.world = world
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
         self.cooldown_time = 0
-        gm.Colour.__init__(self, colour, world.tile_rect(*self.trect),
-                           conf.LAYERS['player'])
+        self.colour = conf.PLAYER_COLOURS[ident]
+        gm.Graphic.__init__(self, 'player{0}.png'.format(ident + 1),
+                            world.tile_pos(x, y), conf.LAYERS['player'])
+        self.resize(world.tile_size, world.tile_size)
 
     def fire (self, key, key_up, mods):
         if key_up:
@@ -155,7 +157,7 @@ class Level (World):
         fps = self.scheduler.fps
         for i, (keys_m, keys_f) in enumerate(zip(conf.KEYS_MOVE,
                                                  conf.KEYS_FIRE)):
-            p = Player(self, conf.PLAYER_COLOURS[i], 0, 2 + 2 * i)
+            p = Player(self, i, 0, 2 + 2 * i)
             ps.append(p)
             self.evthandler.add_key_handlers([
                 (keys_f, p.fire, eh.MODE_ONPRESS)
