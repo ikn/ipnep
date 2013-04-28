@@ -1,7 +1,7 @@
-Ludum Dare 26 game (theme: 'minimalism').  This is a 2-player competitive game
-where the goal is to paint the canvas in your colour.  Paint lasts for three
-blocks; after it has run out, a projectile spreads out the paint on other tiles
-it goes over.
+A game created for Ludum Dare 26, with the theme 'minimalism'.  This is a
+2-player competitive game where the goal is to paint the canvas in your colour.
+Paint lasts for four blocks; after it has run out, a projectile spreads out the
+paint on other tiles it goes over.
 
     DEPENDENCIES
 
@@ -31,8 +31,8 @@ executable.
     CONTROLS
 
 WASD/arrow keys: move players
-space or left shift/right shift or right ctrl: fire paint ball; hold to charge
-                                               and release faster
+space/right shift: fire paint ball; hold to charge and release faster
+left shift/right ctrl: hold to move faster
 F10: minimise
 
 WASD is in the same place for the AZERTY, Dvorak and Colemak keyboard layouts

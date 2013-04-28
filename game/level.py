@@ -148,21 +148,21 @@ class Painter (gm.Graphic):
     def paint (self, x, y):
         canvas = self.world.canvas
         i = canvas.get_at(x, y)
-        if i is not None:
-            self.ident = i
-            sfc = self.sfc_before_transform(self.transforms[0])
-            sfc.fill((0, 0, 0, 0))
-            sfc.blit(self.imgs[i], (0, 0))
-        self.world.canvas.paint(self.ident, x, y)
-        #if self.remain:
-            #if i != self.ident and self.world.canvas.paint(self.ident, x, y):
-                #self.remain -= 1
-        #elif i is not None:
+        #if i is not None:
             #self.ident = i
             #sfc = self.sfc_before_transform(self.transforms[0])
             #sfc.fill((0, 0, 0, 0))
             #sfc.blit(self.imgs[i], (0, 0))
-            #self.remain = conf.PAINTER_PAINT_PER_PICKUP
+        #self.world.canvas.paint(self.ident, x, y)
+        if self.remain:
+            if i != self.ident and self.world.canvas.paint(self.ident, x, y):
+                self.remain -= 1
+        elif i is not None:
+            self.ident = i
+            sfc = self.sfc_before_transform(self.transforms[0])
+            sfc.fill((0, 0, 0, 0))
+            sfc.blit(self.imgs[i], (0, 0))
+            self.remain = conf.PAINTER_PAINT_PER_PICKUP
 
     def get_pos (self, t):
         i = self.axis
@@ -194,6 +194,7 @@ class Player (gm.Graphic):
         self.meter = meter
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
+        self.running = False
         self.cooldown_time = 0
         self.ident = ident
         self._dirn = 0
@@ -242,17 +243,23 @@ class Player (gm.Graphic):
                 float(conf.COOLDOWN_TIME - max(self.cooldown_time, 0)) / \
                 conf.COOLDOWN_TIME
             )
-        if self._moved_last and not self._moved:
+        if not self._moved:
             self._moving = 0
-        elif self._moved and not self._moved_last:
+        elif not self._moved_last:
             self._moving = 1
-        elif self._moved:
-            self._moving += conf.PLAYER_SPEED
-        self._moved_last = self._moved
-        self._moved = False
+        else:
+            self._moving += conf.PLAYER_SPEED[self.running]
         if self._moving >= 1:
             self._move(self._dirn)
             self._moving -= 1
+        if self._moved and not self._moved_last:
+            self._moving = 1 - conf.PLAYER_MOVE_DELAY
+        self._moved_last = self._moved
+        self._moved = False
+        self.running = False
+
+    def run (self, *args):
+        self.running = True
 
     def move (self, key, mode, mods):
         for dirn, ks in enumerate(conf.KEYS_MOVE[self.ident]):
@@ -336,17 +343,18 @@ class Level (World):
         self.canvas = Canvas(self)
         self.players = ps = []
         fps = self.scheduler.fps
-        for i, (keys_m, keys_f) in enumerate(zip(conf.KEYS_MOVE,
-                                                 conf.KEYS_FIRE)):
+        for i, (keys_m, keys_f, keys_r) in \
+            enumerate(zip(conf.KEYS_MOVE, conf.KEYS_FIRE, conf.KEYS_RUN)):
             m = Meter(i, (w - conf.METER_WIDTH) * i)
             self.graphics.add(m)
             p = Player(self, i, i * (sx - 1), sy / 2, m)
             ps.append(p)
             self.evthandler.add_key_handlers([
-                (keys_f, p.fire, eh.MODE_ONPRESS)
-            ] + [
                 (ks, p.move, eh.MODE_HELD)
                 for j, ks in enumerate(keys_m)
+            ] + [
+                (keys_f, p.fire, eh.MODE_ONPRESS),
+                (keys_r, p.run, eh.MODE_HELD)
             ])
         self.painters = []
         self.particles = []

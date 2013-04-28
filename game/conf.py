@@ -10,17 +10,19 @@ class Conf (object):
          (pg.K_s, pg.K_o)),
         ((pg.K_LEFT,), (pg.K_UP,), (pg.K_RIGHT,), (pg.K_DOWN,))
     )
-    KEYS_FIRE = ((pg.K_SPACE, pg.K_LSHIFT), (pg.K_RSHIFT, pg.K_RCTRL))
+    KEYS_FIRE = ((pg.K_SPACE,), (pg.K_RSHIFT,))
+    KEYS_RUN = ((pg.K_LSHIFT,), (pg.K_RCTRL,))
 
     # gameplay
-    PAINTER_SPEED = 3
+    PAINTER_SPEED = 5
     BASE_PAINTER_SPEED = 2
     PAINT_PER_PAINTER = 4
     PAINTER_PAINT_PER_PICKUP = 2
     MAX_PAINTER_SPEED = 10
     LEVEL_SIZE = (25, 13)
-    COOLDOWN_TIME = 5
-    PLAYER_SPEED = .15
+    COOLDOWN_TIME = 2
+    PLAYER_SPEED = (.2, .5)
+    PLAYER_MOVE_DELAY = 3 # as ratio of normal delay
 
     # graphics
     RES_W = (1024, 576)
