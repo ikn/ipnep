@@ -64,11 +64,10 @@ setting to its default (initial) value, delete it.
             # new setting: use as new default
             self._defaults[k] = deepcopy(v)
             if v is not None:
-                t = type(v)
-                self._types[k] = self._tricky_types.get(t, t)
+                self._types[k] = type(v)
         elif not isinstance(v, t):
             try:
-                v = t(v)
+                v = self._tricky_types.get(t, t)(v)
             except (TypeError, ValueError):
                 # invalid: fall back to default
                 print 'warning: {0} has invalid type for \'{1}\'; falling ' \

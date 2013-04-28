@@ -47,6 +47,8 @@ class Canvas (gm.Graphic):
                     raise Exception('player {0} wins'.format(
                         (scores[0] < scores[1]) + 1
                     ))
+            else:
+                conf.GAME.play_snd('p{0}point'.format(ident + 1))
             self.world.score.set_level(level)
             self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size

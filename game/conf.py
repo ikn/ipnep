@@ -1,6 +1,7 @@
 import pygame as pg
 
 from engine import conf
+from engine.util import dd
 
 
 class Conf (object):
@@ -48,6 +49,8 @@ class Conf (object):
 
     # audio
     MOVE_SOUND_FREQ = (.5, .2)
+    SOUND_VOLUME = .2
+    SOUND_VOLUMES = dd(1, p1point = .5, p2point = .5)
 
 
 conf.add(Conf.__dict__)
