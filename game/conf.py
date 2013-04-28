@@ -49,8 +49,8 @@ class Conf (object):
 
     # audio
     MOVE_SOUND_FREQ = (.5, .2)
-    SOUND_VOLUME = .2
-    SOUND_VOLUMES = dd(1, p1point = .5, p2point = .5)
+    SOUND_VOLUME = .5
+    SOUND_VOLUMES = dd(1, move = .5, p1point = .2, p2point = .2, explode = 2)
 
 
 conf.add(Conf.__dict__)

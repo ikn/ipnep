@@ -415,6 +415,8 @@ class Level (World):
                 x2, y2 = p2.tpos
                 if abs(x2 - x1) < 1 and abs(y2 - y1) < 1:
                     rm.extend((p1, p2))
+        for i in xrange(len(rm) / 2):
+            conf.GAME.play_snd('explode')
         for p in rm:
             p.explode()
         frame = self.scheduler.frame
