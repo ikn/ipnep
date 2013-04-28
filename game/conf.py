@@ -18,6 +18,7 @@ class Conf (object):
     MAX_PAINTER_SPEED = 10
     LEVEL_SIZE = (25, 13)
     COOLDOWN_TIME = 2
+    PLAYER_SPEED = .15
 
     # graphics
     RES_W = (1024, 576)

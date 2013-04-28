@@ -13,33 +13,33 @@ class Canvas (gm.Graphic):
         w, h = world.rect.size
         self.trect = pg.Rect(1, 1, w - 2, h - 2)
         r = world.tile_rect(*self.trect)
-        self.colours = [[None for y in xrange(h - 2)] for x in xrange(w - 2)]
+        self.grid = [[None for y in xrange(h - 2)] for x in xrange(w - 2)]
         sfc = pg.Surface(r[2:])
         img = conf.GAME.img('canvas.png', cache = False)
         sfc.blit(img, (0, 0))
         gm.Graphic.__init__(self, sfc, r[:2], conf.LAYERS['canvas'])
 
-    def get_colour (self, x, y):
+    def get_at (self, x, y):
         if not self.trect.collidepoint(x, y):
             return None
         else:
-            return self.colours[x - 1][y - 1]
+            return self.grid[x - 1][y - 1]
 
-    def paint (self, colour, x, y):
+    def paint (self, ident, x, y):
         if not self.trect.collidepoint(x, y):
             return False
-        self.colours[x - 1][y - 1] = colour
+        self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
-        sfc.fill(colour, ((x - 1) * s, (y - 1) * s, s, s))
+        sfc.fill(conf.PLAYER_COLOURS[ident], ((x - 1) * s, (y - 1) * s, s, s))
         self._dirty.append(pg.Rect(self.world.tile_rect(x, y, 1, 1)))
         return True
 
 
 class Painter (gm.Graphic):
-    def __init__ (self, world, colour, pos, axis, dirn, speed):
+    def __init__ (self, world, ident, pos, axis, dirn, speed):
         self.world = world
-        self.colour = colour
+        self.ident = ident
         self._tpos_last = self.tpos = list(pos)
         self._t_last = 0
         self.axis = axis
@@ -52,7 +52,8 @@ class Painter (gm.Graphic):
         sfc = pg.Surface((2 * radius, 2 * radius)).convert_alpha()
         sfc.fill((0, 0, 0, 0))
         pg.draw.circle(sfc, (0, 0, 0), (radius, radius), radius)
-        pg.draw.circle(sfc, colour, (radius, radius), radius - 5)
+        pg.draw.circle(sfc, conf.PLAYER_COLOURS[ident], (radius, radius),
+                       radius - 5)
         gm.Graphic.__init__(self, sfc, self.get_pos(0), conf.LAYERS['painter'])
         world.add_painter(self)
         self._pos_interp = world.scheduler.interp(
@@ -61,12 +62,12 @@ class Painter (gm.Graphic):
 
     def paint (self, x, y):
         canvas = self.world.canvas
-        c = canvas.get_colour(x, y)
+        i = canvas.get_at(x, y)
         if self.remain:
-            if c != self.colour and self.world.canvas.paint(self.colour, x, y):
+            if i != self.ident and self.world.canvas.paint(self.ident, x, y):
                 self.remain -= 1
-        elif c is not None:
-            self.colour = c
+        elif i is not None:
+            self.ident = i
             self.remain = 1
 
     def get_pos (self, t):
@@ -90,13 +91,17 @@ class Painter (gm.Graphic):
 
 class Player (gm.Graphic):
     def __init__ (self, world, ident, x, y):
+        gm.Graphic.__init__(self, 'player{0}.png'.format(ident + 1),
+                            world.tile_pos(x, y), conf.LAYERS['player'])
         self.world = world
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
         self.cooldown_time = 0
-        self.colour = conf.PLAYER_COLOURS[ident]
-        gm.Graphic.__init__(self, 'player{0}.png'.format(ident + 1),
-                            world.tile_pos(x, y), conf.LAYERS['player'])
+        self.ident = ident
+        self._dirn = 0
+        self._moving = 0
+        self._moved = False
+        self._moved_last = False
         self.resize(world.tile_size, world.tile_size)
         self.resize(world.tile_size, world.tile_size) # whaaaaaaaaaaaaaa
 
@@ -114,7 +119,7 @@ class Player (gm.Graphic):
                 else:
                     assert y == h - 1
                     dirn = 1
-                Painter(self.world, self.colour, (x, y), dirn % 2,
+                Painter(self.world, self.ident, (x, y), dirn % 2,
                         1 if dirn >= 2 else -1, self.fire_time)
                 self.firing = False
         elif self.cooldown_time <= 0:
@@ -127,21 +132,66 @@ class Player (gm.Graphic):
         if self.firing:
             self.fire_time += frame
         self.cooldown_time -= frame
+        if self._moved_last and not self._moved:
+            self._moving = 0
+        elif self._moved and not self._moved_last:
+            self._moving = 1
+        elif self._moved:
+            self._moving += conf.PLAYER_SPEED
+        self._moved_last = self._moved
+        self._moved = False
+        if self._moving >= 1:
+            self._move(self._dirn)
+            self._moving -= 1
 
-    def move (self, key, mode, mods, dirn):
+    def move (self, key, mode, mods):
+        for dirn, ks in enumerate(conf.KEYS_MOVE[self.ident]):
+            if key in ks:
+                self._moved = True
+                self._dirn = dirn
+                break
+
+    def _move (self, dirn):
         if self.firing:
             return
-        pos = self.trect.topleft
+        pos = list(self.trect.topleft)
         size = self.world.rect.size
-        dp = [0, 0]
-        i = dirn % 2
-        dirn = 1 if dirn >= 2 else -1
-        if dirn == -1 and pos[i] == 1 or dirn == 1 and pos[i] == size[i] - 2:
-            dp[not i] = -1 if pos[not i] else 1
-            dp[i] += dirn
-        elif 1 <= pos[i] < size[i] - 1:
-            dp[i] += dirn
-        self.trect = self.trect.move(dp)
+        done = False
+        other = self.world.players[not self.ident].trect.topleft # tuple
+        cw = None
+        # keep moving the same way around until not on the other player
+        while not done:
+            # find current edge
+            if pos[0] == 0:
+                edge = 0
+            elif pos[1] == 0:
+                edge = 1
+            elif pos[0] == size[0] - 1:
+                edge = 2
+            else:
+                assert pos[1] == size[1] - 1
+                edge = 3
+            move_axis = not (edge % 2)
+            other_axis = edge % 2
+            at_end = [pos[move_axis] == 1,
+                      pos[move_axis] == size[move_axis] - 2]
+            if edge in (0, 3):
+                at_end.reverse() # now (anticlockwise, clockwise)
+            # get movement direction
+            if cw is None:
+                cw = dirn in (
+                    (edge + 1) % 4,
+                    (2 - other_axis) if pos[move_axis] < size[move_axis] / 2 \
+                        else (3 * other_axis)
+                )
+            if at_end[cw]:
+                # move on other axis
+                pos[not move_axis] += -1 if edge >= 2 else 1
+            # beautiful code
+            pos[move_axis] += (-1) ** (cw + other_axis + (edge >= 2))
+            if tuple(pos) != other:
+                done = True
+        self.trect.topleft = pos
         self.rect = self.world.tile_rect(*self.trect)
 
 
@@ -163,8 +213,7 @@ class Level (World):
             self.evthandler.add_key_handlers([
                 (keys_f, p.fire, eh.MODE_ONPRESS)
             ] + [
-                (ks, [(p.move, (j,))], eh.MODE_ONDOWN_REPEAT, ir(.3 * fps),
-                 ir(.1 * fps))
+                (ks, p.move, eh.MODE_HELD)
                 for j, ks in enumerate(keys_m)
             ])
         self.painters = []
