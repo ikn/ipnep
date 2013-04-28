@@ -51,7 +51,7 @@ class Conf (object):
     MOUSE_VISIBLE = dd(False) # per-backend
     FLAGS = 0
     FULLSCREEN = False
-    RESIZABLE = True # also determines whether fullscreen togglable
+    RESIZABLE = False # also determines whether fullscreen togglable
     RES_W = (960, 540)
     RES_F = None
     MIN_RES_W = (320, 180)
