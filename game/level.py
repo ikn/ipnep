@@ -133,13 +133,10 @@ class Painter (gm.Graphic):
         self.speed = min(conf.BASE_PAINTER_SPEED + conf.PAINTER_SPEED * speed,
                          conf.MAX_PAINTER_SPEED)
         self.paint(*pos)
-        radius = world.tile_size / 2
-        sfc = pg.Surface((2 * radius, 2 * radius)).convert_alpha()
-        sfc.fill((0, 0, 0, 0))
-        pg.draw.circle(sfc, (0, 0, 0), (radius, radius), radius)
-        pg.draw.circle(sfc, conf.PLAYER_COLOURS[ident], (radius, radius),
-                       radius - 5)
-        gm.Graphic.__init__(self, sfc, self.get_pos(0), conf.LAYERS['painter'])
+        gm.Graphic.__init__(self, 'painter{0}.png'.format(ident + 1),
+                            self.get_pos(0), conf.LAYERS['painter'])
+        self.resize(world.tile_size, world.tile_size)
+        self.resize(world.tile_size, world.tile_size) # ......
         world.add_painter(self)
         self._pos_interp = world.scheduler.interp(
             self.get_pos, (self, 'pos'), end = lambda: world.rm_painter(self)
