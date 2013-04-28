@@ -19,7 +19,7 @@ class Conf (object):
     PAINT_PER_PAINTER = 4
     PAINTER_PAINT_PER_PICKUP = 2
     MAX_PAINTER_SPEED = 10
-    LEVEL_SIZE = (25, 13)
+    LEVEL_SIZE = (23, 11)
     COOLDOWN_TIME = 2
     PLAYER_SPEED = (.2, .5)
     PLAYER_MOVE_DELAY = 3 # as ratio of normal delay
@@ -43,6 +43,7 @@ class Conf (object):
     BURST_PARTICLES = (2000, (2.5, 1), (30, 20), (-3, 2), (1, .4))
     PARTICLE_FADE_TIME = .2 # proportion of life
     METER_WIDTH = 10
+    SCORE_HEIGHT = 20
 
 
 conf.add(Conf.__dict__)

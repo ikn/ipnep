@@ -36,6 +36,13 @@ class Canvas (gm.Graphic):
             if old is not None:
                 self.scores[old] -= 1
             self.scores[ident] += 1
+            level = float(self.scores[0]) / sum(self.scores)
+            w, h = conf.LEVEL_SIZE
+            if sum(self.scores) == (w - 2) * (h - 2):
+                raise Exception('player {0} wins (maybe)'.format(
+                    (level < .5) + 1
+                ))
+            self.world.score.set_level(level)
             self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
@@ -192,6 +199,7 @@ class Player (gm.Graphic):
                             world.tile_pos(x, y), conf.LAYERS['player'])
         self.world = world
         self.meter = meter
+        meter.set_level(0)
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
         self.running = False
@@ -222,25 +230,25 @@ class Player (gm.Graphic):
                         1 if dirn >= 2 else -1, self.fire_time,
                         self.world.painter_imgs)
                 self.firing = False
-                self.meter.colour = conf.PLAYER_COLOURS[self.ident]
-                self.meter.set_level(0)
+                self.meter.colours[1] = conf.PLAYER_COLOURS[self.ident]
+                self.meter.set_level(1)
         elif self.cooldown_time <= 0:
             self.firing = True
             self.fire_time = 0
             self.cooldown_time = conf.COOLDOWN_TIME
-            self.meter.colour = conf.CHARGE_COLOUR
-            self.meter.set_level(0)
+            self.meter.colours[1] = conf.CHARGE_COLOUR
+            self.meter.set_level(1)
 
     def update (self):
         frame = self.world.scheduler.frame
         if self.firing:
             self.fire_time += frame
-            self.meter.set_level(min(conf.PAINTER_SPEED * self.fire_time \
-                                     / conf.MAX_PAINTER_SPEED, 1))
+            self.meter.set_level(1 - min(conf.PAINTER_SPEED * self.fire_time \
+                                         / conf.MAX_PAINTER_SPEED, 1))
         elif self.cooldown_time > 0:
             self.cooldown_time -= frame
             self.meter.set_level(
-                float(conf.COOLDOWN_TIME - max(self.cooldown_time, 0)) / \
+                1 - float(conf.COOLDOWN_TIME - max(self.cooldown_time, 0)) / \
                 conf.COOLDOWN_TIME
             )
         if not self._moved:
@@ -313,23 +321,28 @@ class Player (gm.Graphic):
 
 
 class Meter (gm.Graphic):
-    def __init__ (self, ident, x):
-        self.colour = conf.PLAYER_COLOURS[ident]
-        self.level = conf.RES[1]
-        self.sfc = pg.Surface((conf.METER_WIDTH, conf.RES[1]))
-        gm.Graphic.__init__(self, self.sfc, (x, 0))
-        self.set_level(1)
+    def __init__ (self, axis, colours, rect):
+        self.axis = axis
+        self.colours = list(colours)
+        self.sfc = pg.Surface(rect[2:])
+        self.sfc.fill(colours[0])
+        gm.Graphic.__init__(self, self.sfc, rect[:2])
+        self.level = rect[axis + 2]
 
     def set_level (self, level):
         old_level = self.level
-        level = ir(conf.RES[1] * (1 - level))
+        i = self.axis
+        r = self.rect
+        level = ir(level * r[i + 2])
         self.level = level
-        y = min(old_level, level)
-        h = abs(old_level - level)
-        c = self.colour if level < old_level else (0, 0, 0)
-        r = pg.Rect(0, y, conf.METER_WIDTH, h)
-        self.sfc.fill(c, r)
-        self._dirty.append(r.move(self.x, 0))
+        x0 = min(old_level, level)
+        dx = abs(old_level - level)
+        cr = pg.Rect(0, 0, 0, 0)
+        cr[i] = x0
+        cr[i + 2] = dx
+        cr[(not i) + 2] = r[(not i) + 2]
+        self.sfc.fill(self.colours[level < old_level], cr)
+        self._dirty.append(cr.move(self.pos))
 
 
 class Level (World):
@@ -337,7 +350,8 @@ class Level (World):
         sx, sy = conf.LEVEL_SIZE
         self.rect = pg.Rect(0, 0, sx, sy)
         w, h = conf.RES
-        self.tile_size = ts = min((w - 2 * conf.METER_WIDTH) / sx, h / sy)
+        self.tile_size = ts = min((w - 2 * conf.METER_WIDTH) / sx,
+                                  (h - 2 * conf.SCORE_HEIGHT) / sy)
         self.grid_offset = ((w - sx * ts) / 2, (h - sy * ts) / 2)
 
         self.canvas = Canvas(self)
@@ -345,7 +359,9 @@ class Level (World):
         fps = self.scheduler.fps
         for i, (keys_m, keys_f, keys_r) in \
             enumerate(zip(conf.KEYS_MOVE, conf.KEYS_FIRE, conf.KEYS_RUN)):
-            m = Meter(i, (w - conf.METER_WIDTH) * i)
+            m = Meter(1, ((0, 0, 0), conf.PLAYER_COLOURS[i]),
+                      ((w - conf.METER_WIDTH) if i else 0, conf.SCORE_HEIGHT,
+                       conf.METER_WIDTH, conf.RES[1]))
             self.graphics.add(m)
             p = Player(self, i, i * (sx - 1), sy / 2, m)
             ps.append(p)
@@ -358,12 +374,16 @@ class Level (World):
             ])
         self.painters = []
         self.particles = []
+        self.score = Meter(0, conf.PLAYER_COLOURS,
+                           (0, 0, conf.RES[0], conf.SCORE_HEIGHT))
+        self.score.set_level(.5)
 
         # graphics
         bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
         self.painter_imgs = [conf.GAME.img('painter{0}.png'.format(i + 1),
                                            (ts, ts)) for i in xrange(2)]
+        self.graphics.add(self.score)
 
     def update (self):
         for p in self.players:

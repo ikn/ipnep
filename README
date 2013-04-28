@@ -3,6 +3,9 @@ A game created for Ludum Dare 26, with the theme 'minimalism'.  This is a
 Paint lasts for four blocks; after it has run out, a projectile spreads out the
 paint on other tiles it goes over.
 
+The game ends when the entire canvas is coloured, and the winner is the player
+whose colour is the most common.
+
     DEPENDENCIES
 
 Python (2.6 or later 2.x)
