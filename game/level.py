@@ -175,10 +175,11 @@ class Painter (gm.Graphic):
 
 
 class Player (gm.Graphic):
-    def __init__ (self, world, ident, x, y):
+    def __init__ (self, world, ident, x, y, meter):
         gm.Graphic.__init__(self, 'player{0}.png'.format(ident + 1),
                             world.tile_pos(x, y), conf.LAYERS['player'])
         self.world = world
+        self.meter = meter
         self.trect = pg.Rect(x, y, 1, 1)
         self.firing = False
         self.cooldown_time = 0
@@ -207,18 +208,21 @@ class Player (gm.Graphic):
                 Painter(self.world, self.ident, (x, y), dirn % 2,
                         1 if dirn >= 2 else -1, self.fire_time)
                 self.firing = False
+                self.cooldown_time = conf.COOLDOWN_TIME
         elif self.cooldown_time <= 0:
             self.firing = True
             self.fire_time = 0
-            self.cooldown_time = conf.COOLDOWN_TIME
 
     def update (self):
         frame = self.world.scheduler.frame
         if self.firing:
             self.fire_time += frame
-        if self.cooldown_time > 0 and self.cooldown_time - frame <= 0:
-            print self.ident
-        self.cooldown_time -= frame
+        if self.cooldown_time > 0:
+            self.cooldown_time -= frame
+            self.meter.set_level(
+                float(conf.COOLDOWN_TIME - max(self.cooldown_time, 0)) / \
+                conf.COOLDOWN_TIME
+            )
         if self._moved_last and not self._moved:
             self._moving = 0
         elif self._moved and not self._moved_last:
@@ -282,12 +286,32 @@ class Player (gm.Graphic):
         self.rect = self.world.tile_rect(*self.trect)
 
 
+class Meter (gm.Graphic):
+    def __init__ (self, ident, x):
+        self.colour = conf.PLAYER_COLOURS[ident]
+        self.level = conf.RES[1]
+        self.sfc = pg.Surface((conf.METER_WIDTH, conf.RES[1]))
+        gm.Graphic.__init__(self, self.sfc, (x, 0))
+        self.set_level(1)
+
+    def set_level (self, level):
+        old_level = self.level
+        level = ir(conf.RES[1] * (1 - level))
+        self.level = level
+        y = min(old_level, level)
+        h = abs(old_level - level)
+        c = self.colour if level < old_level else (0, 0, 0)
+        r = pg.Rect(0, y, conf.METER_WIDTH, h)
+        self.sfc.fill(c, r)
+        self._dirty.append(r.move(self.x, 0))
+
+
 class Level (World):
     def init (self):
         sx, sy = conf.LEVEL_SIZE
         self.rect = pg.Rect(0, 0, sx, sy)
         w, h = conf.RES
-        self.tile_size = ts = min(w / sx, h / sy)
+        self.tile_size = ts = min((w - 2 * conf.METER_WIDTH) / sx, h / sy)
         self.grid_offset = ((w - sx * ts) / 2, (h - sy * ts) / 2)
 
         self.canvas = Canvas(self)
@@ -295,7 +319,9 @@ class Level (World):
         fps = self.scheduler.fps
         for i, (keys_m, keys_f) in enumerate(zip(conf.KEYS_MOVE,
                                                  conf.KEYS_FIRE)):
-            p = Player(self, i, i * (sx - 1), sy / 2)
+            m = Meter(i, (w - conf.METER_WIDTH) * i)
+            self.graphics.add(m)
+            p = Player(self, i, i * (sx - 1), sy / 2, m)
             ps.append(p)
             self.evthandler.add_key_handlers([
                 (keys_f, p.fire, eh.MODE_ONPRESS)

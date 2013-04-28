@@ -37,6 +37,7 @@ class Conf (object):
     )
     BURST_PARTICLES = (2000, (2.5, 1), (30, 20), (-3, 2), (1, .4))
     PARTICLE_FADE_TIME = .2 # proportion of life
+    METER_WIDTH = 10
 
 
 conf.add(Conf.__dict__)
