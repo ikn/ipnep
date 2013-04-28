@@ -34,8 +34,8 @@ executable.
     CONTROLS
 
 WASD/arrow keys: move players
-space/right shift: fire paint ball; hold to charge and release faster
-left shift/right ctrl: hold to move faster
+space/right ctrl: fire paint ball; hold to charge and release faster
+left shift/right shift: hold to move faster
 F10: minimise
 
 WASD is in the same place for the AZERTY, Dvorak and Colemak keyboard layouts

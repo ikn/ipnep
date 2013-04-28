@@ -13,10 +13,12 @@ class Canvas (gm.Graphic):
         self.world = world
         self.scores = [0, 0]
         w, h = world.rect.size
+        w -= 2
+        h -= 2
         self.ntiles = w * h
-        self.trect = pg.Rect(1, 1, w - 2, h - 2)
+        self.trect = pg.Rect(1, 1, w, h)
         r = world.tile_rect(*self.trect)
-        self.grid = [[None for y in xrange(h - 2)] for x in xrange(w - 2)]
+        self.grid = [[None for y in xrange(h)] for x in xrange(w)]
         sfc = pg.Surface(r[2:])
         self.img = conf.GAME.img('canvas.png', cache = False)
         sfc.blit(self.img, (0, 0))
@@ -33,15 +35,18 @@ class Canvas (gm.Graphic):
             return False
         old = self.grid[x - 1][y - 1]
         if old != ident:
+            scores = self.scores
             if old is not None:
-                self.scores[old] -= 1
-            self.scores[ident] += 1
-            level = float(self.scores[0]) / sum(self.scores)
-            w, h = conf.LEVEL_SIZE
-            if sum(self.scores) == (w - 2) * (h - 2):
-                raise Exception('player {0} wins (maybe)'.format(
-                    (level < .5) + 1
-                ))
+                scores[old] -= 1
+            scores[ident] += 1
+            level = float(scores[0]) / sum(scores)
+            if sum(scores) == self.ntiles:
+                if scores[0] == scores[1]:
+                    raise Exception('draw')
+                else:
+                    raise Exception('player {0} wins'.format(
+                        (scores[0] < scores[1]) + 1
+                    ))
             self.world.score.set_level(level)
             self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
@@ -360,8 +365,8 @@ class Level (World):
         for i, (keys_m, keys_f, keys_r) in \
             enumerate(zip(conf.KEYS_MOVE, conf.KEYS_FIRE, conf.KEYS_RUN)):
             m = Meter(1, ((0, 0, 0), conf.PLAYER_COLOURS[i]),
-                      ((w - conf.METER_WIDTH) if i else 0, conf.SCORE_HEIGHT,
-                       conf.METER_WIDTH, conf.RES[1]))
+                      ((w - conf.METER_WIDTH) if i else 0, 0, conf.METER_WIDTH,
+                       conf.RES[1]))
             self.graphics.add(m)
             p = Player(self, i, i * (sx - 1), sy / 2, m)
             ps.append(p)
@@ -374,8 +379,9 @@ class Level (World):
             ])
         self.painters = []
         self.particles = []
+        mw = conf.METER_WIDTH + 5
         self.score = Meter(0, conf.PLAYER_COLOURS,
-                           (0, 0, conf.RES[0], conf.SCORE_HEIGHT))
+                           (mw, 5, conf.RES[0] - 2 * mw, conf.SCORE_HEIGHT))
         self.score.set_level(.5)
 
         # graphics
