@@ -44,6 +44,10 @@ class Conf (object):
     PARTICLE_FADE_TIME = .2 # proportion of life
     METER_WIDTH = 10
     SCORE_HEIGHT = 20
+    MARGIN = 5
+
+    # audio
+    MOVE_SOUND_FREQ = (.5, .2)
 
 
 conf.add(Conf.__dict__)
