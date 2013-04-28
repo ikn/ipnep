@@ -10,19 +10,22 @@ class Conf (object):
          (pg.K_s, pg.K_o)),
         ((pg.K_LEFT,), (pg.K_UP,), (pg.K_RIGHT,), (pg.K_DOWN,))
     )
-    KEYS_FIRE = ((pg.K_SPACE,), (pg.K_RSHIFT,))
+    KEYS_FIRE = ((pg.K_SPACE, pg.K_LSHIFT), (pg.K_RSHIFT, pg.K_RCTRL))
 
     # gameplay
-    PAINTER_SPEED = 5
+    PAINTER_SPEED = 3
     BASE_PAINTER_SPEED = 2
+    PAINT_PER_PAINTER = 4
+    PAINTER_PAINT_PER_PICKUP = 2
     MAX_PAINTER_SPEED = 10
     LEVEL_SIZE = (25, 13)
-    COOLDOWN_TIME = 2
+    COOLDOWN_TIME = 5
     PLAYER_SPEED = .15
 
     # graphics
     RES_W = (1024, 576)
     PLAYER_COLOURS = ((228, 75, 36), (144, 87, 197))
+    CHARGE_COLOUR = (100, 200, 100)
     LAYERS = {
         'bg': 1,
         'canvas': 0,

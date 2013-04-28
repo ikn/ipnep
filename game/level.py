@@ -18,8 +18,8 @@ class Canvas (gm.Graphic):
         r = world.tile_rect(*self.trect)
         self.grid = [[None for y in xrange(h - 2)] for x in xrange(w - 2)]
         sfc = pg.Surface(r[2:])
-        img = conf.GAME.img('canvas.png', cache = False)
-        sfc.blit(img, (0, 0))
+        self.img = conf.GAME.img('canvas.png', cache = False)
+        sfc.blit(self.img, (0, 0))
         gm.Graphic.__init__(self, sfc, r[:2], conf.LAYERS['canvas'])
 
     def get_at (self, x, y):
@@ -39,7 +39,11 @@ class Canvas (gm.Graphic):
             self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
-        sfc.fill(conf.PLAYER_COLOURS[ident], ((x - 1) * s, (y - 1) * s, s, s))
+        r = ((x - 1) * s, (y - 1) * s, s, s)
+        sfc.blit(self.img, r, r)
+        csfc = pg.Surface((s, s)).convert_alpha()
+        csfc.fill(conf.PLAYER_COLOURS[ident] + (200,))
+        sfc.blit(csfc, r)
         self._dirty.append(pg.Rect(self.world.tile_rect(x, y, 1, 1)))
         return True
 
@@ -122,21 +126,20 @@ class Particles (gm.Graphic):
 
 
 class Painter (gm.Graphic):
-    def __init__ (self, world, ident, pos, axis, dirn, speed):
+    def __init__ (self, world, ident, pos, axis, dirn, speed, imgs):
         self.world = world
         self.ident = ident
         self._tpos_last = self.tpos = list(pos)
         self._t_last = 0
         self.axis = axis
         self.dirn = dirn
-        self.remain = 3
+        self.remain = conf.PAINT_PER_PAINTER
+        self.imgs = imgs
         self.speed = min(conf.BASE_PAINTER_SPEED + conf.PAINTER_SPEED * speed,
                          conf.MAX_PAINTER_SPEED)
         self.paint(*pos)
-        gm.Graphic.__init__(self, 'painter{0}.png'.format(ident + 1),
-                            self.get_pos(0), conf.LAYERS['painter'])
-        self.resize(world.tile_size, world.tile_size)
-        self.resize(world.tile_size, world.tile_size) # ......
+        gm.Graphic.__init__(self, imgs[ident].copy(), self.get_pos(0),
+                            conf.LAYERS['painter'])
         world.add_painter(self)
         self._pos_interp = world.scheduler.interp(
             self.get_pos, (self, 'pos'), end = lambda: world.rm_painter(self)
@@ -145,12 +148,21 @@ class Painter (gm.Graphic):
     def paint (self, x, y):
         canvas = self.world.canvas
         i = canvas.get_at(x, y)
-        if self.remain:
-            if i != self.ident and self.world.canvas.paint(self.ident, x, y):
-                self.remain -= 1
-        elif i is not None:
+        if i is not None:
             self.ident = i
-            self.remain = 1
+            sfc = self.sfc_before_transform(self.transforms[0])
+            sfc.fill((0, 0, 0, 0))
+            sfc.blit(self.imgs[i], (0, 0))
+        self.world.canvas.paint(self.ident, x, y)
+        #if self.remain:
+            #if i != self.ident and self.world.canvas.paint(self.ident, x, y):
+                #self.remain -= 1
+        #elif i is not None:
+            #self.ident = i
+            #sfc = self.sfc_before_transform(self.transforms[0])
+            #sfc.fill((0, 0, 0, 0))
+            #sfc.blit(self.imgs[i], (0, 0))
+            #self.remain = conf.PAINTER_PAINT_PER_PICKUP
 
     def get_pos (self, t):
         i = self.axis
@@ -206,18 +218,25 @@ class Player (gm.Graphic):
                     assert y == h - 1
                     dirn = 1
                 Painter(self.world, self.ident, (x, y), dirn % 2,
-                        1 if dirn >= 2 else -1, self.fire_time)
+                        1 if dirn >= 2 else -1, self.fire_time,
+                        self.world.painter_imgs)
                 self.firing = False
-                self.cooldown_time = conf.COOLDOWN_TIME
+                self.meter.colour = conf.PLAYER_COLOURS[self.ident]
+                self.meter.set_level(0)
         elif self.cooldown_time <= 0:
             self.firing = True
             self.fire_time = 0
+            self.cooldown_time = conf.COOLDOWN_TIME
+            self.meter.colour = conf.CHARGE_COLOUR
+            self.meter.set_level(0)
 
     def update (self):
         frame = self.world.scheduler.frame
         if self.firing:
             self.fire_time += frame
-        if self.cooldown_time > 0:
+            self.meter.set_level(min(conf.PAINTER_SPEED * self.fire_time \
+                                     / conf.MAX_PAINTER_SPEED, 1))
+        elif self.cooldown_time > 0:
             self.cooldown_time -= frame
             self.meter.set_level(
                 float(conf.COOLDOWN_TIME - max(self.cooldown_time, 0)) / \
@@ -335,6 +354,8 @@ class Level (World):
         # graphics
         bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
+        self.painter_imgs = [conf.GAME.img('painter{0}.png'.format(i + 1),
+                                           (ts, ts)) for i in xrange(2)]
 
     def update (self):
         for p in self.players:
