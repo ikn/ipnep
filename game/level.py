@@ -10,7 +10,9 @@ from engine.util import ir
 class Canvas (gm.Graphic):
     def __init__ (self, world):
         self.world = world
+        self.scores = [0, 0]
         w, h = world.rect.size
+        self.ntiles = w * h
         self.trect = pg.Rect(1, 1, w - 2, h - 2)
         r = world.tile_rect(*self.trect)
         self.grid = [[None for y in xrange(h - 2)] for x in xrange(w - 2)]
@@ -28,7 +30,12 @@ class Canvas (gm.Graphic):
     def paint (self, ident, x, y):
         if not self.trect.collidepoint(x, y):
             return False
-        self.grid[x - 1][y - 1] = ident
+        old = self.grid[x - 1][y - 1]
+        if old != ident:
+            if old is not None:
+                self.scores[old] -= 1
+            self.scores[ident] += 1
+            self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
         sfc = self.sfc_before_transform(self.transforms[0])
         sfc.fill(conf.PLAYER_COLOURS[ident], ((x - 1) * s, (y - 1) * s, s, s))
