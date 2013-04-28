@@ -1,10 +1,11 @@
-from math import cos, sin
+from math import cos, sin, pi, ceil
+from random import expovariate, uniform
 
 import pygame as pg
 
 from engine import eh, conf, gm
 from engine.game import World
-from engine.util import ir
+from engine.util import ir, randsgn
 
 
 class Canvas (gm.Graphic):
@@ -41,6 +42,76 @@ class Canvas (gm.Graphic):
         sfc.fill(conf.PLAYER_COLOURS[ident], ((x - 1) * s, (y - 1) * s, s, s))
         self._dirty.append(pg.Rect(self.world.tile_rect(x, y, 1, 1)))
         return True
+
+
+class Particles (gm.Graphic):
+    def __init__ (self, pos, colours, volume, size, speed, accn, life):
+        self.t = 0
+        # size, speed, accn are (mean, spread), spread mean distance from mean
+        rand = self.rand
+        self.ptcls = ptcls = []
+        norm = sum(ratio for c, ratio in colours)
+        # generate particles
+        maxs = []
+        for c, ratio in colours:
+            cvol = ir(float(volume) / norm)
+            cptcls = []
+            ptcls.append((c, cptcls))
+            while cvol > 0:
+                s = max(ir(rand(size)), 1)
+                if s * s > 2 * cvol:
+                    break
+                cvol -= s * s
+                plife = abs(rand(life))
+                if plife <= 0:
+                    continue
+                paccn = rand(accn)
+                pspeed = max(rand(speed), 0)
+                angle = uniform(0, 2 * pi)
+                cptcls.append([plife, paccn, pspeed, angle, [0, 0], (s, s),
+                               plife])
+                if paccn >= 0:
+                    xmax = pspeed * plife + .5 * paccn * plife * plife + s
+                elif -float(pspeed) / paccn < plife:
+                    xmax = -.5 * pspeed * pspeed / paccn + s
+                else:
+                    # decelerating but don't reach the maximum distance
+                    xmax = pspeed * plife + .5 * paccn * plife * plife + s
+                maxs.append((xmax * cos(angle), xmax * sin(angle)))
+        self.hs = hs = [int(ceil(max(0, *xmaxs))) for xmaxs in zip(*maxs)]
+        self.sfc = pg.Surface((hs[0] * 2, hs[0] * 2)).convert_alpha()
+        gm.Graphic.__init__(self, self.sfc, (pos[0] - hs[0], pos[1] - hs[0]),
+                            conf.LAYERS['particles'])
+
+    def update (self, dt):
+        if not any(ptcls for c, ptcls in self.ptcls):
+            return True
+        self.t += dt
+        t = self.t
+        sfc = self.sfc
+        hs = self.hs
+        sfc.fill((0, 0, 0, 0))
+        for c, ptcls in self.ptcls:
+            i = 0
+            while i < len(ptcls):
+                ptcl = ptcls[i]
+                ptcl[0] -= dt
+                ptcl[2] += dt * ptcl[1]
+                speed, angle, pos, size = ptcl[2:]
+                pos[0] += dt * speed * cos(angle)
+                pos[1] += dt * speed * sin(angle)
+                sfc.fill(c, ((ir(pos[0]) + hs[0], ir(pos[1]) + hs[0]), size))
+                if ptcl[0] <= 0:
+                    ptcls.pop(i)
+                else:
+                    i += 1
+        self._mk_dirty()
+
+    def rand (self, data):
+        if data[1] == 0:
+            return data[0]
+        else:
+            return data[0] + randsgn() * expovariate(1. / data[1])
 
 
 class Painter (gm.Graphic):
@@ -94,6 +165,9 @@ class Painter (gm.Graphic):
     def explode (self):
         self.world.scheduler.rm_timeout(self._pos_interp)
         self.world.rm_painter(self)
+        v = [0, 0]
+        v[self.axis] = self.dirn * self.speed * self.world.tile_size
+        self.world.add_ptcls(self.rect.center, self.ident, v)
 
 
 class Player (gm.Graphic):
@@ -135,9 +209,11 @@ class Player (gm.Graphic):
             self.cooldown_time = conf.COOLDOWN_TIME
 
     def update (self):
-        frame = 1. / self.world.scheduler.fps
+        frame = self.world.scheduler.frame
         if self.firing:
             self.fire_time += frame
+        if self.cooldown_time > 0 and self.cooldown_time - frame <= 0:
+            print self.ident
         self.cooldown_time -= frame
         if self._moved_last and not self._moved:
             self._moving = 0
@@ -224,6 +300,7 @@ class Level (World):
                 for j, ks in enumerate(keys_m)
             ])
         self.painters = []
+        self.particles = []
 
         # graphics
         bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
@@ -247,6 +324,12 @@ class Level (World):
                     rm.extend((p1, p2))
         for p in rm:
             p.explode()
+        frame = self.scheduler.frame
+        for p in self.particles[:]:
+            if p.update(frame):
+                self.particles.remove(p)
+                self.graphics.rm(p)
+                self.scheduler.rm_timeout(p.mover)
 
     def tile_pos (self, x, y):
         x0, y0 = self.grid_offset
@@ -269,3 +352,11 @@ class Level (World):
     def rm_painter (self, p):
         self.graphics.rm(p)
         self.painters.remove(p)
+
+    def add_ptcls (self, pos, ident, vel = (0, 0)):
+        p = Particles(pos, conf.PARTICLE_COLOURS[ident], *conf.BURST_PARTICLES)
+        pos = p.pos
+        get_pos = lambda t: (pos[0] + vel[0] * t, pos[1] + vel[1] * t)
+        p.mover = self.scheduler.interp(get_pos, (p, 'pos'), round_val = True)
+        self.particles.append(p)
+        self.graphics.add(p)

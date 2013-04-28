@@ -27,8 +27,15 @@ class Conf (object):
         'bg': 1,
         'canvas': 0,
         'player': -1,
-        'painter': -2
+        'painter': -2,
+        'particles': -3
     }
+    # most args taken by the class
+    PARTICLE_COLOURS = (
+        [((177, 58, 28), 1), ((255, 95, 54), 1)],
+        [((100, 60, 137), 1), ((194, 128, 255), 1)]
+    )
+    BURST_PARTICLES = (2000, (2.5, 1), (30, 20), (-3, 2), (1, .4))
 
 
 conf.add(Conf.__dict__)
