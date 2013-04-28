@@ -56,6 +56,9 @@ class Particles (gm.Graphic):
         for c, ratio in colours:
             cvol = ir(float(volume) / norm)
             cptcls = []
+            c = list(c)
+            if len(c) == 3:
+                c.append(255)
             ptcls.append((c, cptcls))
             while cvol > 0:
                 s = max(ir(rand(size)), 1)
@@ -69,7 +72,7 @@ class Particles (gm.Graphic):
                 pspeed = max(rand(speed), 0)
                 angle = uniform(0, 2 * pi)
                 cptcls.append([plife, paccn, pspeed, angle, [0, 0], (s, s),
-                               plife])
+                               conf.PARTICLE_FADE_TIME * plife])
                 if paccn >= 0:
                     xmax = pspeed * plife + .5 * paccn * plife * plife + s
                 elif -float(pspeed) / paccn < plife:
@@ -97,11 +100,15 @@ class Particles (gm.Graphic):
                 ptcl = ptcls[i]
                 ptcl[0] -= dt
                 ptcl[2] += dt * ptcl[1]
-                speed, angle, pos, size = ptcl[2:]
+                t, accn, speed, angle, pos, size, fade_t = ptcl
                 pos[0] += dt * speed * cos(angle)
                 pos[1] += dt * speed * sin(angle)
-                sfc.fill(c, ((ir(pos[0]) + hs[0], ir(pos[1]) + hs[0]), size))
-                if ptcl[0] <= 0:
+                alpha = c[3]
+                if t < fade_t:
+                    alpha = 255 - ir(alpha * (fade_t - max(t, 0)) / fade_t)
+                sfc.fill(c[:3] + [alpha],
+                         ((ir(pos[0]) + hs[0], ir(pos[1]) + hs[0]), size))
+                if t <= 0:
                     ptcls.pop(i)
                 else:
                     i += 1
