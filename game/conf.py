@@ -5,6 +5,10 @@ from engine.util import dd
 
 
 class Conf (object):
+    # window
+    WINDOW_TITLE = 'It\'s Probably Not Even Paint'
+    WINDOW_ICON = conf.IMG_DIR + 'icon.png'
+
     # input
     KEYS_MOVE = (
         ((pg.K_a, pg.K_q), (pg.K_w, pg.K_z, pg.K_COMMA), (pg.K_d, pg.K_e),

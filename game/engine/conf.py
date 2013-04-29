@@ -39,7 +39,9 @@ class Conf (object):
     else:
         CONF_DIR = join_path(os.path.expanduser(u'~'), '.config', IDENT)
     CONF = join_path(CONF_DIR, 'conf')
-    DATA_DIR = os.path.dirname(sys.argv[0]) + sep
+    DATA_DIR = os.path.dirname(sys.argv[0])
+    if DATA_DIR:
+        DATA_DIR += sep
     IMG_DIR = DATA_DIR + 'img' + sep
     SOUND_DIR = DATA_DIR + 'sound' + sep
     MUSIC_DIR = DATA_DIR + 'music' + sep

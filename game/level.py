@@ -41,7 +41,7 @@ class Canvas (gm.Graphic):
                 scores[old] -= 1
             scores[ident] += 1
             level = float(scores[0]) / sum(scores)
-            if sum(scores) > 10:#== self.ntiles:
+            if sum(scores) == self.ntiles:
                 sfc.blit(self.img, (0, 0))
                 imgs = (self.world.bg.snapshot(), self.snapshot(),
                         self.world.score.snapshot())
@@ -489,4 +489,4 @@ class PostGame (World):
         self.evthandler.add_event_handlers({pg.KEYDOWN: self.restart})
 
     def restart (self, evt):
-        conf.GAME.start_world(Level)
+        conf.GAME.switch_world(Level)

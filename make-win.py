@@ -8,4 +8,4 @@ environ['cl'] = '/I..\sdl_include'
 if call(('python', 'setup.py', 'build')) != 0:
     exit(1)
 for f in glob('build\\lib*\\*.pyd'):
-    copy(f, 'game\\')
+    copy(f, 'game\\engine\\')
