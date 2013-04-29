@@ -36,6 +36,7 @@ executable.
 WASD/arrow keys: move players
 space/right ctrl: fire paint ball; hold to charge and release faster
 left shift/right shift: hold to move faster
+escape, backspace: quit (or just close the window)
 F10: minimise
 
 WASD is in the same place for the AZERTY, Dvorak and Colemak keyboard layouts
@@ -44,3 +45,9 @@ as well.
     LICENSING
 
 Source code is available under the GPL version 3 (included).
+
+Images and sounds are in the public domain (CC0
+<https://creativecommons.org/publicdomain/zero/1.0/>).
+
+The font 'DenkOne-Regular.ttf' is available under the Open Font License with
+reserved font name 'Denk'.

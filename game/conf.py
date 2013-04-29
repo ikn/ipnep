@@ -24,6 +24,7 @@ class Conf (object):
     COOLDOWN_TIME = 2
     PLAYER_SPEED = (.2, .5)
     PLAYER_MOVE_DELAY = 3 # as ratio of normal delay
+    POSTGAME_INPUT_DELAY = 1.5
 
     # graphics
     RES_W = (1024, 576)
@@ -32,6 +33,7 @@ class Conf (object):
     LAYERS = {
         'bg': 1,
         'canvas': 0,
+        'text': -1,
         'player': -1,
         'painter': -2,
         'particles': -3
@@ -46,6 +48,7 @@ class Conf (object):
     METER_WIDTH = 10
     SCORE_HEIGHT = 20
     MARGIN = 5
+    REQUIRED_FONTS = dd({}, postgame = {'main': ('DenkOne-Regular.ttf', 80)})
 
     # audio
     MOVE_SOUND_FREQ = (.5, .2)

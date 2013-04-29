@@ -20,7 +20,7 @@ class Canvas (gm.Graphic):
         r = world.tile_rect(*self.trect)
         self.grid = [[None for y in xrange(h)] for x in xrange(w)]
         sfc = pg.Surface(r[2:])
-        self.img = conf.GAME.img('canvas.png', cache = False)
+        self.img = conf.GAME.img('canvas.png')
         sfc.blit(self.img, (0, 0))
         gm.Graphic.__init__(self, sfc, r[:2], conf.LAYERS['canvas'])
 
@@ -34,25 +34,24 @@ class Canvas (gm.Graphic):
         if not self.trect.collidepoint(x, y):
             return False
         old = self.grid[x - 1][y - 1]
+        sfc = self.sfc_before_transform(self.transforms[0])
         if old != ident:
             scores = self.scores
             if old is not None:
                 scores[old] -= 1
             scores[ident] += 1
             level = float(scores[0]) / sum(scores)
-            if sum(scores) == self.ntiles:
-                if scores[0] == scores[1]:
-                    raise Exception('draw')
-                else:
-                    raise Exception('player {0} wins'.format(
-                        (scores[0] < scores[1]) + 1
-                    ))
+            if sum(scores) > 10:#== self.ntiles:
+                sfc.blit(self.img, (0, 0))
+                imgs = (self.world.bg.snapshot(), self.snapshot(),
+                        self.world.score.snapshot())
+                conf.GAME.switch_world(PostGame, imgs, scores)
+                return
             else:
                 conf.GAME.play_snd('p{0}point'.format(ident + 1))
             self.world.score.set_level(level)
             self.grid[x - 1][y - 1] = ident
         s = self.world.tile_size
-        sfc = self.sfc_before_transform(self.transforms[0])
         r = ((x - 1) * s, (y - 1) * s, s, s)
         sfc.blit(self.img, r, r)
         csfc = pg.Surface((s, s)).convert_alpha()
@@ -359,6 +358,10 @@ class Meter (gm.Graphic):
 
 class Level (World):
     def init (self):
+        self.evthandler.add_key_handlers([
+            (conf.KEYS_BACK, lambda *args: conf.GAME.quit_world(),
+             eh.MODE_ONDOWN)
+        ])
         b = conf.MARGIN
         sx, sy = conf.LEVEL_SIZE
         self.rect = pg.Rect(0, 0, sx, sy)
@@ -393,7 +396,7 @@ class Level (World):
         self.score.set_level(.5)
 
         # graphics
-        bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
+        self.bg = bg = gm.Graphic('bg.png', (0, 0), conf.LAYERS['bg'])
         self.graphics.add(bg, self.canvas, *ps)
         self.painter_imgs = [conf.GAME.img('painter{0}.png'.format(i + 1),
                                            (ts, ts)) for i in xrange(2)]
@@ -455,3 +458,35 @@ class Level (World):
         p.mover = self.scheduler.interp(get_pos, (p, 'pos'), round_val = True)
         self.particles.append(p)
         self.graphics.add(p)
+
+
+class PostGame (World):
+    def __init__ (self, scheduler, evthandler, imgs, scores):
+        self.args = (imgs, scores)
+        World.__init__(self, scheduler, evthandler)
+
+    def init (self):
+        imgs, scores = self.args
+        self.graphics.add(*imgs)
+        if scores[0] == scores[1]:
+            text = 'Draw'
+            colour = (0, 0, 0)
+        else:
+            ident = (scores[0] < scores[1])
+            text = ('Orange', 'Purple')[ident] + \
+                   ' player wins'.format(ident + 1)
+            colour = conf.PLAYER_COLOURS[ident]
+        text = 'Game finished\n' + text
+        sfc = conf.GAME.render_text('main', text, colour, just = 1,
+                                    line_spacing = 20)[0]
+        text = gm.Graphic(sfc, layer = conf.LAYERS['text'])
+        self.graphics.add(text)
+        text.align()
+        self.scheduler.add_timeout(self.register_input,
+                                   seconds = conf.POSTGAME_INPUT_DELAY)
+
+    def register_input (self):
+        self.evthandler.add_event_handlers({pg.KEYDOWN: self.restart})
+
+    def restart (self, evt):
+        conf.GAME.start_world(Level)
